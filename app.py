@@ -8,7 +8,7 @@ import numpy as np
 import cvzone
 import os
 from datetime import datetime
-import json  # Added to process your secret text key
+import json
 
 # Page Layout Setup
 st.set_page_config(page_title="Central Attendance ERP", page_icon="🛡️", layout="wide")
@@ -16,13 +16,17 @@ st.set_page_config(page_title="Central Attendance ERP", page_icon="🛡️", lay
 # Initialize Firebase safely (Cloud & Local Hybrid Mode)
 if not firebase_admin._apps:
     try:
-        # Check if the app is running on Streamlit Cloud using Secrets
-        if "secrets" in st.secrets and "firebase_key" in st.secrets["secrets"]:
-            secret_json = st.secrets["secrets"]["firebase_key"]
-            key_dict = json.loads(secret_json)
+        # FIX: Directly read from st.secrets without the broken sub-nested key wrapper
+        if "firebase_key" in st.secrets:
+            secret_json = st.secrets["firebase_key"]
+            # Check if secrets manager passed it as a dictionary already or raw text string
+            if isinstance(secret_json, str):
+                key_dict = json.loads(secret_json)
+            else:
+                key_dict = dict(secret_json)
             cred = credentials.Certificate(key_dict)
         else:
-            # Local fallback just in case
+            # Local fallback for running on your personal laptop station terminal
             cred = credentials.Certificate("YourserviceAccountKey.json")
             
         firebase_admin.initialize_app(cred, {
@@ -52,7 +56,7 @@ if not st.session_state.logged_in:
                 st.rerun()
             else:
                 st.error("❌ Invalid Admin Username or Password. Security access denied.")
-    st.stop() # Prevents users from viewing code blocks below until validated
+    st.stop() 
 
 # --- MAIN DASHBOARD CONTROL PORTAL (LOGGED IN) ---
 st.sidebar.title("🛡️ Admin Command Panel")
@@ -73,16 +77,12 @@ if page == "📊 Attendance Analytics":
     st.title("📊 Attendance Monitoring Metrics")
     st.write("Real-time telemetry metrics pulled straight from the Firebase Realtime Database cloud nodes.")
     
-    # Pull data tree map structure from cloud node matrix
     students_ref = db.reference('Students').get()
     
     if students_ref:
         total_students = len(students_ref)
+        total_attendance_logs = sum([data.get('attendance', 0) for data in students_ref.values() if isinstance(data, dict)])
         
-        # Calculate summary metrics safely
-        total_attendance_logs = sum([data.get('attendance', 0) for data in students_ref.values()])
-        
-        # Display high-level metric cards
         col1, col2 = st.columns(2)
         col1.metric(label="Total Enrolled Students", value=total_students, delta="Active Directory")
         col2.metric(label="Cumulative Attendance Hits", value=total_attendance_logs, delta="Live Syncing", delta_color="inverse")
@@ -90,18 +90,18 @@ if page == "📊 Attendance Analytics":
         st.markdown("---")
         st.subheader("📋 Core Roster Logs Directory")
         
-        # Build clean data layout table dynamically
         table_data = []
         for s_id, data in students_ref.items():
-            table_data.append({
-                "Student ID": s_id,
-                "Full Name": data.get("name", "N/A"),
-                "Branch": data.get("branch", "N/A"),
-                "Section": data.get("section", "N/A"),
-                "Year": data.get("year", "N/A"),
-                "Total Attendance": data.get("attendance", 0),
-                "Last Check-In Timestamp": data.get("last_attendance", "N/A")
-            })
+            if data and isinstance(data, dict):
+                table_data.append({
+                    "Student ID": s_id,
+                    "Full Name": data.get("name", "N/A"),
+                    "Branch": data.get("branch", "N/A"),
+                    "Section": data.get("section", "N/A"),
+                    "Year": data.get("year", "N/A"),
+                    "Total Attendance": data.get("attendance", 0),
+                    "Last Check-In Timestamp": data.get("last_attendance", "N/A")
+                })
         st.dataframe(table_data, use_container_width=True)
     else:
         st.info("📂 Database directory tree is currently empty. Go to the Enrollment tab to register new students.")
@@ -113,17 +113,22 @@ elif page == "📸 Live Attendance Camera":
     st.title("📸 Biometric Face-Scanning Core Terminal")
     st.write("Click 'Start Camera' below to capture video input frames from your tethered Iriun Mobile camera feed.")
     
+    # SAFETY: Explicit cloud hardware warning notification block
+    st.warning("⚠️ Cloud Deployment Warning: The live camera loop can only track frame input streams when executed locally via your laptop station console (`localhost:8501`). Running it directly inside the web browser framework will trigger a hardware connection error.")
+    
     run_cam = st.checkbox("🟢 Toggle Live Tracking System Node Active")
-    FRAME_WINDOW = st.image([]) # Target container block to display the OpenCV video matrix inside browser tab
+    FRAME_WINDOW = st.image([]) 
     
     if run_cam:
-        try:
-            # Load face matching binary vectors vector map layout
-            file = open('encodings.p', 'rb')
-            encodeListKnown, studentIds = pickle.load(file)
-            file.close()
+        # Safe model loading sequence wrapper
+        if not os.path.exists('encodings.p'):
+            st.error("❌ System Error: 'encodings.p' model vector map missing from the application root folder. Please run your local generator script first.")
+            st.stop()
             
-            # Mount USB Camera Feed via DirectShow architecture layer
+        try:
+            with open('encodings.p', 'rb') as file:
+                encodeListKnown, studentIds = pickle.load(file)
+            
             capture = cv2.VideoCapture(0, cv2.CAP_DSHOW)
             capture.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
             capture.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
@@ -135,10 +140,9 @@ elif page == "📸 Live Attendance Camera":
             while run_cam:
                 success, img = capture.read()
                 if not success:
-                    st.error("Failed to read image array from Iriun Camera connection.")
+                    st.error("Failed to read image array from camera connection. Ensure your webcam link is not occupied by another background app.")
                     break
                 
-                # Matrix downsampling pipeline adjustments
                 imgS = cv2.resize(img, (0, 0), None, 0.25, 0.25)
                 imgS = cv2.cvtColor(imgS, cv2.COLOR_BGR2RGB)
                 
@@ -163,23 +167,24 @@ elif page == "📸 Live Attendance Camera":
                     if counter != 0:
                         if counter == 1:
                             StudentInfo = db.reference(f'Students/{id}').get()
-                            datetimeObj = datetime.strptime(StudentInfo['last_attendance'], "%Y-%m-%d %H:%M:%S")
-                            secondElapsed = (datetime.now() - datetimeObj).total_seconds()
-                            
-                            if secondElapsed > 30:
-                                ref = db.reference(f'Students/{id}')
-                                StudentInfo['attendance'] += 1
-                                ref.child('attendance').set(StudentInfo['attendance'])
-                                ref.child('last_attendance').set(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-                                st.toast(f"✅ Attendance Logged: {StudentInfo['name']}", icon="🎉")
+                            if StudentInfo:
+                                datetimeObj = datetime.strptime(StudentInfo.get('last_attendance', datetime.now().strftime("%Y-%m-%d %H:%M:%S")), "%Y-%m-%d %H:%M:%S")
+                                secondElapsed = (datetime.now() - datetimeObj).total_seconds()
+                                
+                                if secondElapsed > 30:
+                                    ref = db.reference(f'Students/{id}')
+                                    current_attendance = StudentInfo.get('attendance', 0) + 1
+                                    ref.child('attendance').set(current_attendance)
+                                    ref.child('last_attendance').set(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+                                    st.toast(f"✅ Attendance Logged: {StudentInfo.get('name', 'Student')}", icon="🎉")
                             counter = 2
                         
-                        cv2.putText(img, f"Name: {StudentInfo['name']}", (20, 40), cv2.FONT_HERSHEY_COMPLEX, 0.6, (255, 255, 255), 1)
-                        cv2.putText(img, f"Attendance: {StudentInfo['attendance']}", (20, 70), cv2.FONT_HERSHEY_COMPLEX, 0.6, (0, 255, 0), 1)
+                        if 'StudentInfo' in locals() and StudentInfo:
+                            cv2.putText(img, f"Name: {StudentInfo.get('name', 'N/A')}", (20, 40), cv2.FONT_HERSHEY_COMPLEX, 0.6, (255, 255, 255), 1)
+                            cv2.putText(img, f"Attendance: {StudentInfo.get('attendance', 0)}", (20, 70), cv2.FONT_HERSHEY_COMPLEX, 0.6, (0, 255, 0), 1)
                 else:
                     counter = 0
                 
-                # Stream the processed OpenCV BGR array converted to RGB out directly inside the web browser element
                 FRAME_WINDOW.image(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
             
             capture.release()
@@ -217,7 +222,6 @@ elif page == "🎓 Enroll New Student":
             st.error("❌ Registration Failed: Please fill in all fields and upload a face reference image.")
         else:
             try:
-                # Optimized cloud-safe dynamic file path directory mapping
                 images_dir = os.path.join(os.getcwd(), "images")
                 os.makedirs(images_dir, exist_ok=True)
                 
