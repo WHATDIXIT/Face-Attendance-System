@@ -1,6 +1,6 @@
 streamlit
 firebase-admin
-opencv-python-headless
+opencv-python
 numpy
 cvzone
 dlib-bin
