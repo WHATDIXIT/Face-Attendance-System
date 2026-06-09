@@ -8,16 +8,29 @@ import numpy as np
 import cvzone
 import os
 from datetime import datetime
+import json  # Added to process your secret text key
 
 # Page Layout Setup
 st.set_page_config(page_title="Central Attendance ERP", page_icon="🛡️", layout="wide")
 
-# Initialize Firebase safely
+# Initialize Firebase safely (Cloud & Local Hybrid Mode)
 if not firebase_admin._apps:
-    cred = credentials.Certificate("YourserviceAccountKey.json")
-    firebase_admin.initialize_app(cred, {
-        "databaseURL": "https://face-based-attendance-38ee8-default-rtdb.asia-southeast1.firebasedatabase.app/"
-    })
+    try:
+        # Check if the app is running on Streamlit Cloud using Secrets
+        if "secrets" in st.secrets and "firebase_key" in st.secrets["secrets"]:
+            secret_json = st.secrets["secrets"]["firebase_key"]
+            key_dict = json.loads(secret_json)
+            cred = credentials.Certificate(key_dict)
+        else:
+            # Local fallback just in case
+            cred = credentials.Certificate("YourserviceAccountKey.json")
+            
+        firebase_admin.initialize_app(cred, {
+            "databaseURL": "https://face-based-attendance-38ee8-default-rtdb.asia-southeast1.firebasedatabase.app/"
+        })
+    except Exception as e:
+        st.error(f"❌ Firebase Configuration Error: {e}")
+        st.stop()
 
 # --- SESSION STATE LOCK FOR LOGIN SYSTEM ---
 if "logged_in" not in st.session_state:
@@ -171,10 +184,10 @@ elif page == "📸 Live Attendance Camera":
             
             capture.release()
         except Exception as e:
-            st.error(f"Hardware initialization failed: {e}. Ensure Iriun application is running on phone over USB loop.")
+            st.error(f"Hardware initialization failed: {e}. Note: Live local camera access requires hosting the script on your local machine.")
 
 # ==============================================================================
-# PAGE 3: ENROLL NEW STUDENT (YOUR EXISTING REGISTRATION FORM)
+# PAGE 3: ENROLL NEW STUDENT
 # ==============================================================================
 elif page == "🎓 Enroll New Student":
     st.title("🎓 Student Registration Portal")
@@ -204,7 +217,8 @@ elif page == "🎓 Enroll New Student":
             st.error("❌ Registration Failed: Please fill in all fields and upload a face reference image.")
         else:
             try:
-                images_dir = r"C:\Users\HP\Desktop\Face Based Attedance\face-recognition-attendance-main\images"
+                # Optimized cloud-safe dynamic file path directory mapping
+                images_dir = os.path.join(os.getcwd(), "images")
                 os.makedirs(images_dir, exist_ok=True)
                 
                 file_extension = os.path.splitext(uploaded_file.name)[1]
@@ -227,7 +241,6 @@ elif page == "🎓 Enroll New Student":
                 ref = db.reference(f"Students/{student_id}")
                 ref.set(student_data)
                 
-                st.success(f"🎉 Success! {name} ({student_id}) has been added locally and deployed to the Firebase Cloud.")
-                st.info("💡 Reminder: Remember to run 'python encoder.py' in your terminal when you close this app to update the face matching model configurations!")
+                st.success(f"🎉 Success! {name} ({student_id}) has been registered into the cloud database system.")
             except Exception as e:
                 st.error(f"System Error: {e}")
