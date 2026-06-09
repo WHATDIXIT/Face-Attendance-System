@@ -1,0 +1,7 @@
+# Ignore Firebase Private Keys
+YourserviceAccountKey.json
+
+# Ignore local compiled vector files and media caches
+encodings.p
+__pycache__/
+.streamlit/
