@@ -1,8 +1,6 @@
 streamlit
 firebase-admin
 opencv-python-headless
-opencv-contrib-python-headless
-numpy==1.26.4
+face-recognition
 cvzone
-dlib-bin
-face_recognition @ git+https://github.com/thetoby9944/face_recognition
+numpy
