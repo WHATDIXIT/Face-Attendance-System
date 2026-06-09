@@ -117,9 +117,11 @@ elif page == "📸 Live Attendance Camera":
     st.warning("⚠️ Cloud Deployment Warning: The live camera loop can only track frame input streams when executed locally via your laptop station console (`localhost:8501`). Running it directly inside the web browser framework will trigger a hardware connection error.")
     
     run_cam = st.checkbox("🟢 Toggle Live Tracking System Node Active")
-    FRAME_WINDOW = st.image([]) 
     
     if run_cam:
+        # FIX: Moved inside the conditional block so it only initializes when the checkbox is actively toggled on
+        FRAME_WINDOW = st.image([]) 
+        
         # Safe model loading sequence wrapper
         if not os.path.exists('encodings.p'):
             st.error("❌ System Error: 'encodings.p' model vector map missing from the application root folder. Please run your local generator script first.")
@@ -129,6 +131,7 @@ elif page == "📸 Live Attendance Camera":
             with open('encodings.p', 'rb') as file:
                 encodeListKnown, studentIds = pickle.load(file)
             
+            # Mount USB Camera Feed via DirectShow architecture layer
             capture = cv2.VideoCapture(0, cv2.CAP_DSHOW)
             capture.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
             capture.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
@@ -143,6 +146,7 @@ elif page == "📸 Live Attendance Camera":
                     st.error("Failed to read image array from camera connection. Ensure your webcam link is not occupied by another background app.")
                     break
                 
+                # Matrix downsampling pipeline adjustments
                 imgS = cv2.resize(img, (0, 0), None, 0.25, 0.25)
                 imgS = cv2.cvtColor(imgS, cv2.COLOR_BGR2RGB)
                 
@@ -185,6 +189,7 @@ elif page == "📸 Live Attendance Camera":
                 else:
                     counter = 0
                 
+                # Stream the processed OpenCV BGR array converted to RGB out directly inside the web browser element
                 FRAME_WINDOW.image(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
             
             capture.release()
