@@ -26,9 +26,9 @@ if not firebase_admin._apps:
         else:
             cred = credentials.Certificate("YourserviceAccountKey.json")
             
-        # FIX: Removed the trailing slash from the database URL string
+        # FIX: Changed URL domain to target your exact US-Central database node structure
         firebase_admin.initialize_app(cred, {
-            "databaseURL": "https://face-based-attendance-38ee8-default-rtdb.asia-southeast1.firebasedatabase.app"
+            "databaseURL": "https://face-based-attendance-38ee8-default-rtdb.firebaseio.com"
         })
     except Exception as e:
         st.error(f"❌ Firebase Configuration Error: {e}")
@@ -57,7 +57,7 @@ if not st.session_state.logged_in:
                 else:
                     st.error("❌ Invalid Admin Username or Password. Security access denied.")
     
-    # FIX: Explicitly stop the execution flow here so Streamlit forces the login page HTML to draw
+    # Keeps execution localized cleanly inside the form gate when logged_in is False
     st.stop() 
 
 # ==============================================================================
