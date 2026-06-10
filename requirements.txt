@@ -1,6 +1,7 @@
+# rebuild-v2
 streamlit
 firebase-admin
 opencv-python-headless
+numpy
 face-recognition
 cvzone
-numpy
