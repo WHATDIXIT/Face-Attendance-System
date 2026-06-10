@@ -36,8 +36,8 @@ if not firebase_admin._apps:
             cred = credentials.Certificate("serviceAccountKey.json")
 
         firebase_admin.initialize_app(cred, {
-            "databaseURL": "https://face-based-attendance-38ee8-default-rtdb.firebaseio.com"
-        })
+    "databaseURL": "https://face-based-attendance-38ee8-default-rtdb.asia-southeast1.firebasedatabase.app"
+})
 
     except Exception as e:
         st.error(f"❌ Firebase Configuration Error: {e}")
