@@ -3,3 +3,8 @@ streamlit
 firebase-admin
 opencv-python-headless
 numpy
+opencv-contrib-python-headless
+cvzone
+dlib-bin
+face_recognition @ git+https://github.com/thetoby9944/face_recognition
+streamlit-webrtc
